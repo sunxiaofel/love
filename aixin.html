@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic Particle Heart</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      canvas {
+        display: block;
+      }
+      .text {
+        position: absolute;
+        color: #ff69b4;
+        font-size: 4rem;
+        font-weight: bold;
+        font-family: Arial, sans-serif;
+        text-shadow: 2px 2px 10px rgba(255, 105, 180, 0.8);
+        opacity: 0;
+        transition: opacity 1s ease;
+      }
+      .text.visible {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="text" id="heart-text">Tong Meng</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- <script src="script.js"></script> -->
+    <script>
+      // Scene setup
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const heartText = document.getElementById("heart-text");
+
+      // Particle setup
+      const particles = [];
+      const particleCount = 1000;
+      const geometry = new THREE.BufferGeometry();
+      const positions = [];
+      const heartShape = [];
+
+      // Generate heart shape points
+      for (let t = 0; t < Math.PI * 2; t += 0.01) {
+        const x = 16 * Math.pow(Math.sin(t), 3);
+        const y =
+          13 * Math.cos(t) -
+          5 * Math.cos(2 * t) -
+          2 * Math.cos(3 * t) -
+          Math.cos(4 * t);
+        heartShape.push(new THREE.Vector3(x / 10, y / 10, 0));
+      }
+
+      // Initialize particles
+      for (let i = 0; i < particleCount; i++) {
+        const point = heartShape[Math.floor(Math.random() * heartShape.length)];
+        const particle = {
+          position: new THREE.Vector3(
+            (Math.random() - 0.5) * 10,
+            (Math.random() - 0.5) * 10,
+            (Math.random() - 0.5) * 10
+          ),
+          target: point.clone(),
+          speed: Math.random() * 0.02 + 0.02,
+        };
+        particles.push(particle);
+        positions.push(
+          particle.position.x,
+          particle.position.y,
+          particle.position.z
+        );
+      }
+
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(positions, 3)
+      );
+
+      // Material
+      const material = new THREE.PointsMaterial({
+        color: 0xff69b4,
+        size: 0.1,
+        transparent: true,
+        opacity: 0.8,
+      });
+
+      const particleSystem = new THREE.Points(geometry, material);
+      scene.add(particleSystem);
+
+      // Camera position
+      camera.position.z = 5;
+
+      // Animation control
+      let time = 0;
+      let forming = true;
+      let initialized = false; // 用于标记是否初始化显示文字
+
+      function animate() {
+        time += 0.01;
+        const positions = particleSystem.geometry.attributes.position.array;
+
+        particles.forEach((particle, index) => {
+          const i = index * 3;
+          if (forming) {
+            // Move particles to form heart
+            particle.position.x +=
+              (particle.target.x - particle.position.x) * particle.speed;
+            particle.position.y +=
+              (particle.target.y - particle.position.y) * particle.speed;
+            particle.position.z +=
+              (particle.target.z - particle.position.z) * particle.speed;
+          } else {
+            // Disperse particles
+            particle.position.x += (Math.random() - 0.5) * 0.1;
+            particle.position.y += (Math.random() - 0.5) * 0.1;
+            particle.position.z += (Math.random() - 0.5) * 0.1;
+          }
+          positions[i] = particle.position.x;
+          positions[i + 1] = particle.position.y;
+          positions[i + 2] = particle.position.z;
+        });
+
+        particleSystem.geometry.attributes.position.needsUpdate = true;
+
+        // Ensure Tong Meng is visible during the first form state
+        if (forming && !initialized) {
+          heartText.classList.add("visible");
+          initialized = true; // 设置标记为已初始化
+        }
+
+        // Toggle forming/dispersing
+        if (time > 2 && forming) {
+          forming = false;
+          time = 0;
+          heartText.classList.remove("visible");
+        } else if (time > 2 && !forming) {
+          forming = true;
+          time = 0;
+          heartText.classList.add("visible");
+        }
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+
+      animate();
+
+      // Handle resizing
+      window.addEventListener("resize", () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+      });
+    </script>
+  </body>
+</html>
